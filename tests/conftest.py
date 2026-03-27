@@ -8,15 +8,24 @@ from srvaudit.models import CommandResult, DistroInfo
 
 
 class MockTransport:
-    def __init__(self, responses: Dict[str, str] = None, return_codes: Dict[str, int] = None):
+    def __init__(
+        self,
+        responses: Dict[str, str] = None,
+        return_codes: Dict[str, int] = None,
+        strict: bool = False,
+    ):
         self.responses = responses or {}
         self.return_codes = return_codes or {}
         self.executed = []
+        self.strict = strict
+        self.unknown_commands = []
 
     def execute(self, cmd: str, timeout: int = None) -> CommandResult:
         self.executed.append(cmd)
+        if cmd not in self.responses and self.strict:
+            self.unknown_commands.append(cmd)
         stdout = self.responses.get(cmd, "")
-        rc = self.return_codes.get(cmd, 0)
+        rc = self.return_codes.get(cmd, 0 if cmd in self.responses else 127)
         return CommandResult(command=cmd, stdout=stdout, return_code=rc)
 
 

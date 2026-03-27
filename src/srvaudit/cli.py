@@ -24,7 +24,10 @@ console = Console()
 
 
 def _parse_target(target: str) -> tuple:
-    target = target.replace("ssh://", "")
+    target = target.strip().replace("ssh://", "")
+    if not target:
+        raise typer.BadParameter("Target cannot be empty. Use: user@host")
+
     user = "root"
     host = target
     port = 22
@@ -37,6 +40,9 @@ def _parse_target(target: str) -> tuple:
             port = int(port_str)
         except ValueError:
             pass
+
+    if not host:
+        raise typer.BadParameter("Hostname cannot be empty. Use: user@host")
 
     return user, host, port
 
@@ -218,9 +224,19 @@ def diff(
         if f["severity"] in severities
     }
 
-    fixed = [b_issues[k] for k in b_issues if k not in a_issues]
-    new = [a_issues[k] for k in a_issues if k not in b_issues]
-    unchanged = [a_issues[k] for k in a_issues if k in b_issues]
+    severity_order = {"critical": 0, "warning": 1}
+    fixed = sorted(
+        [b_issues[k] for k in b_issues if k not in a_issues],
+        key=lambda f: severity_order.get(f["severity"], 9),
+    )
+    new = sorted(
+        [a_issues[k] for k in a_issues if k not in b_issues],
+        key=lambda f: severity_order.get(f["severity"], 9),
+    )
+    unchanged = sorted(
+        [a_issues[k] for k in a_issues if k in b_issues],
+        key=lambda f: severity_order.get(f["severity"], 9),
+    )
 
     if fixed:
         console.print(f"\n[green]FIXED ({len(fixed)}):[/green]")
