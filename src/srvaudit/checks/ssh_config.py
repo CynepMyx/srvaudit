@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shlex
 from typing import List
 
 from srvaudit.checks.registry import BaseCheck, check
@@ -46,8 +45,8 @@ class SSHConfigCheck(BaseCheck):
         include = config.pop("Include", None)
         if include:
             for pattern in include.split():
-                safe = shlex.quote(pattern)
-                inc = self.execute(f"cat {safe} 2>/dev/null")
+                # Use sh -c to allow glob expansion (pattern is from sshd_config, not user input)
+                inc = self.execute(f"sh -c 'cat {pattern} 2>/dev/null'")
                 if inc.success:
                     included = _parse_sshd_config(inc.stdout)
                     for k, v in included.items():

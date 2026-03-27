@@ -24,9 +24,10 @@ def calculate_score(findings: List[Finding]) -> int:
     penalties = sum(WEIGHTS.get(f.severity, 0) for f in findings)
     score = max(0, 100 - penalties)
 
+    # Any CRITICAL caps score at 45, but multiple CRITICALs can push it lower
     has_critical = any(f.severity == Severity.CRITICAL for f in findings)
-    if has_critical:
-        score = min(score, 45)
+    if has_critical and score > 45:
+        score = 45
 
     return score
 

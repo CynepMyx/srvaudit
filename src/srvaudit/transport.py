@@ -132,6 +132,8 @@ class ShellTransport:
         output = self._read_until_marker(marker, t)
 
         if output is None:
+            # Drain leftover buffer to prevent marker leaking into next command
+            self._drain_buffer()
             return CommandResult(
                 command=command,
                 stdout="",
@@ -209,6 +211,17 @@ class ShellTransport:
             logger.warning("Output truncated to 64KB for command")
 
         return stdout, return_code
+
+    def _drain_buffer(self):
+        """Drain any remaining data from the channel after a timeout."""
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            if self.channel.recv_ready():
+                self.channel.recv(READ_CHUNK)
+            else:
+                time.sleep(0.1)
+                if not self.channel.recv_ready():
+                    break
 
     def close(self):
         try:

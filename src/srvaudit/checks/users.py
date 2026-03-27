@@ -21,7 +21,9 @@ class UsersCheck(BaseCheck):
             return
 
         uid0_users = [
-            u.strip() for u in result.stdout.splitlines() if u.strip() and u.strip().isalnum()
+            u.strip()
+            for u in result.stdout.splitlines()
+            if u.strip() and u.strip() not in ("$", "#", "$ ", "# ")
         ]
         non_root = [u for u in uid0_users if u != "root"]
         if non_root:

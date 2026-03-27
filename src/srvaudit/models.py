@@ -93,7 +93,7 @@ class AuditReport:
     score: int = 100
     grade: str = "A"
     duration_sec: float = 0.0
-    version: str = "0.1.0"
+    version: str = field(default_factory=lambda: __import__("srvaudit").__version__)
     disclaimer: str = (
         "This audit relies on system utilities on the target host. "
         "If the system is compromised, results may be unreliable. "

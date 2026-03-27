@@ -38,3 +38,11 @@ def test_prompt_artifact_filtered():
     findings = check.run()
     criticals = [f for f in findings if f.severity == Severity.CRITICAL]
     assert len(criticals) == 0
+
+
+def test_hyphenated_username_detected():
+    check = _make_check("root\ntest-admin\n")
+    findings = check.run()
+    criticals = [f for f in findings if f.severity == Severity.CRITICAL]
+    assert len(criticals) == 1
+    assert "test-admin" in criticals[0].title

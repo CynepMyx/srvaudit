@@ -26,7 +26,14 @@ def test_critical_caps_at_45():
 
 def test_multiple_criticals():
     score = calculate_score([_f(Severity.CRITICAL), _f(Severity.CRITICAL)])
+    # 100 - 50 = 50, but capped at 45 due to CRITICAL
     assert score == 45
+
+
+def test_many_criticals_below_45():
+    score = calculate_score([_f(Severity.CRITICAL)] * 4)
+    # 100 - 100 = 0, below 45 cap, so stays at 0
+    assert score == 0
 
 
 def test_info_no_penalty():

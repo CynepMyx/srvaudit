@@ -6,30 +6,6 @@ from typing import List, Optional
 from srvaudit.models import CheckMeta, CommandResult, DistroInfo, Finding, Severity
 from srvaudit.transport import ShellTransport
 
-_REGISTRY: dict[str, type[BaseCheck]] = {}
-
-
-def check(
-    name: str,
-    category: str,
-    quick: bool = False,
-    requires_sudo: bool = False,
-):
-    def decorator(cls):
-        cls._check_meta = CheckMeta(name, category, quick, requires_sudo)
-        _REGISTRY[name] = cls
-        return cls
-
-    return decorator
-
-
-def get_all_checks() -> List[type[BaseCheck]]:
-    return list(_REGISTRY.values())
-
-
-def get_quick_checks() -> List[type[BaseCheck]]:
-    return [c for c in _REGISTRY.values() if c._check_meta.quick]
-
 
 class BaseCheck(ABC):
     _check_meta: CheckMeta
@@ -83,3 +59,28 @@ class BaseCheck(ABC):
             title=title,
             details=details,
         )
+
+
+_REGISTRY: dict[str, type[BaseCheck]] = {}
+
+
+def check(
+    name: str,
+    category: str,
+    quick: bool = False,
+    requires_sudo: bool = False,
+):
+    def decorator(cls):
+        cls._check_meta = CheckMeta(name, category, quick, requires_sudo)
+        _REGISTRY[name] = cls
+        return cls
+
+    return decorator
+
+
+def get_all_checks() -> List[type[BaseCheck]]:
+    return list(_REGISTRY.values())
+
+
+def get_quick_checks() -> List[type[BaseCheck]]:
+    return [c for c in _REGISTRY.values() if c._check_meta.quick]

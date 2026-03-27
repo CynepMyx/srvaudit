@@ -24,7 +24,7 @@ class CronCheck(BaseCheck):
 
         for user in users_result.stdout.splitlines():
             user = user.strip()
-            if not user or not user.isalnum():
+            if not user or user in ("$", "#") or not all(c.isalnum() or c in "-_." for c in user):
                 continue
             result = self.execute(f"crontab -l -u {user} 2>/dev/null")
             if result.success and result.stdout.strip():
