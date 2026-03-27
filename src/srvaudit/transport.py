@@ -15,6 +15,7 @@ logger = logging.getLogger("srvaudit")
 MARKER_PREFIX = "SRVAUDIT"
 READ_CHUNK = 4096
 SHELL_INIT_TIMEOUT = 5
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b\[\?[0-9]*[hl]")
 
 
 class HostKeyError(Exception):
@@ -90,18 +91,32 @@ class ShellTransport:
 
         self.channel = self.client.invoke_shell(width=200, height=50)
         self.channel.settimeout(0)
-        self._drain_initial_output()
+        self._init_shell()
 
-    def _drain_initial_output(self):
+    def _init_shell(self):
+        time.sleep(0.3)
+        # Drain MOTD and initial prompt
+        while self.channel.recv_ready():
+            self.channel.recv(READ_CHUNK)
+            time.sleep(0.1)
+
+        # Disable features that break parsing
+        init_cmds = (
+            "export TERM=dumb\n"
+            "export PS1='$ '\n"
+            "export PS2=''\n"
+            "export LANG=C\n"
+            "export LC_ALL=C\n"
+            "bind 'set enable-bracketed-paste off' 2>/dev/null\n"
+            "set +o emacs 2>/dev/null\n"
+            "stty -echo 2>/dev/null\n"
+        )
+        self.channel.sendall(init_cmds.encode())
         time.sleep(0.5)
-        deadline = time.monotonic() + SHELL_INIT_TIMEOUT
-        while time.monotonic() < deadline:
-            if self.channel.recv_ready():
-                self.channel.recv(READ_CHUNK)
-            else:
-                time.sleep(0.1)
-                if not self.channel.recv_ready():
-                    break
+        # Drain init output
+        while self.channel.recv_ready():
+            self.channel.recv(READ_CHUNK)
+            time.sleep(0.1)
 
     def execute(self, command: str, timeout: int = None) -> CommandResult:
         t = timeout or self.command_timeout
@@ -145,7 +160,8 @@ class ShellTransport:
                 try:
                     chunk = self.channel.recv(READ_CHUNK).decode("utf-8", errors="replace")
                     buf += chunk
-                    if marker in buf and buf.count(marker) >= 2:
+                    clean = ANSI_RE.sub("", buf)
+                    if marker in clean and clean.count(marker) >= 2:
                         return buf
                 except Exception:
                     break
@@ -159,6 +175,8 @@ class ShellTransport:
     def _parse_output(self, raw: str, marker: str, sent_command: str) -> tuple:
         lines = []
         return_code = -1
+
+        raw = ANSI_RE.sub("", raw)
 
         pattern = re.compile(re.escape(marker) + r"(\d+)" + re.escape(marker))
         match = pattern.search(raw)
