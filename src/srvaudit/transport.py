@@ -188,7 +188,19 @@ class ShellTransport:
                 continue
             if sent_command and line.strip() == sent_command.strip():
                 continue
-            lines.append(line)
+            stripped = line.strip()
+            # Filter shell prompt artifacts
+            if stripped in ("$", "$ ", "#", "# "):
+                continue
+            # Strip leading prompt from output lines
+            if stripped.startswith("$ "):
+                stripped = stripped[2:]
+                lines.append(stripped)
+            elif stripped.startswith("# "):
+                stripped = stripped[2:]
+                lines.append(stripped)
+            else:
+                lines.append(line)
 
         stdout = "\n".join(lines).strip()
 

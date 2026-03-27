@@ -13,7 +13,7 @@ class FirewallCheck(BaseCheck):
 
         # Try ufw first (Debian/Ubuntu)
         ufw = self.execute("ufw status 2>/dev/null")
-        if ufw.success and "active" in ufw.stdout.lower():
+        if ufw.success and "status: active" in ufw.stdout.lower():
             findings.append(self.ok("UFW firewall is active"))
             self._check_ufw_rules(ufw.stdout, findings)
             return findings
