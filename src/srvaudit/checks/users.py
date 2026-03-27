@@ -21,23 +21,25 @@ class UsersCheck(BaseCheck):
             return
 
         uid0_users = [
-            u.strip() for u in result.stdout.splitlines()
-            if u.strip() and u.strip().isalnum()
+            u.strip() for u in result.stdout.splitlines() if u.strip() and u.strip().isalnum()
         ]
         non_root = [u for u in uid0_users if u != "root"]
         if non_root:
-            findings.append(self.critical(
-                f"Non-root users with UID 0: {', '.join(non_root)}",
-                details="Only root should have UID 0. Other accounts with UID 0 have full root privileges.",
-                fix_command=f"usermod -u <new_uid> {non_root[0]}",
-            ))
+            findings.append(
+                self.critical(
+                    f"Non-root users with UID 0: {', '.join(non_root)}",
+                    details=(
+                        "Only root should have UID 0."
+                        " Other accounts with UID 0 have full root privileges."
+                    ),
+                    fix_command=f"usermod -u <new_uid> {non_root[0]}",
+                )
+            )
         else:
             findings.append(self.ok("Only root has UID 0"))
 
     def _check_login_shells(self, findings: list):
-        result = self.execute(
-            "getent passwd | grep -vE '(/nologin|/false|/sync|/halt|/shutdown)$'"
-        )
+        result = self.execute("getent passwd | grep -vE '(/nologin|/false|/sync|/halt|/shutdown)$'")
         if not result.success:
             return
 
@@ -48,7 +50,9 @@ class UsersCheck(BaseCheck):
                 users_with_shell.append(parts[0])
 
         if len(users_with_shell) > 5:
-            findings.append(self.info(
-                f"{len(users_with_shell)} users with login shells",
-                details=", ".join(users_with_shell[:10]),
-            ))
+            findings.append(
+                self.info(
+                    f"{len(users_with_shell)} users with login shells",
+                    details=", ".join(users_with_shell[:10]),
+                )
+            )

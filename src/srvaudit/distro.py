@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 
 from srvaudit.models import DistroInfo, Environment
 from srvaudit.transport import ShellTransport
@@ -72,7 +71,8 @@ def detect_environment(transport: ShellTransport) -> Environment:
 
     container_result = transport.execute("test -f /.dockerenv")
     if not container_result.success:
-        cgroup_result = transport.execute("grep -q 'docker\\|lxc\\|kubepods' /proc/1/cgroup 2>/dev/null")
+        cgroup_cmd = r"grep -q 'docker\|lxc\|kubepods' /proc/1/cgroup 2>/dev/null"
+        cgroup_result = transport.execute(cgroup_cmd)
         env.is_container = cgroup_result.success
     else:
         env.is_container = True

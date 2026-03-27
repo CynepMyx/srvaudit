@@ -40,7 +40,9 @@ def render_terminal(report: AuditReport, verbose: bool = False):
             f"[bold]srvaudit[/bold] report for [cyan]{report.target}[/cyan]\n"
             f"Score: [{grade_color}]{report.score}/100 ({report.grade})[/{grade_color}]  |  "
             f"Duration: {report.duration_sec:.1f}s  |  "
-            f"Distro: {report.distro.id} {report.distro.version}" if report.distro else "",
+            f"Distro: {report.distro.id} {report.distro.version}"
+            if report.distro
+            else "",
             title="srvaudit",
             border_style="blue",
         )

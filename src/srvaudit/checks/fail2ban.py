@@ -22,15 +22,22 @@ class Fail2banCheck(BaseCheck):
             # Check if SSH is exposed at all
             ssh_exposed = self._is_ssh_exposed()
             if not ssh_exposed:
-                findings.append(self.info(
-                    "fail2ban not installed (SSH may not be exposed)",
-                ))
+                findings.append(
+                    self.info(
+                        "fail2ban not installed (SSH may not be exposed)",
+                    )
+                )
             else:
-                findings.append(self.warning(
-                    "fail2ban is not installed",
-                    details="Protects against SSH brute-force attacks",
-                    fix_command="apt install fail2ban && systemctl enable fail2ban && systemctl start fail2ban",
-                ))
+                findings.append(
+                    self.warning(
+                        "fail2ban is not installed",
+                        details="Protects against SSH brute-force attacks",
+                        fix_command=(
+                            "apt install fail2ban && systemctl enable fail2ban"
+                            " && systemctl start fail2ban"
+                        ),
+                    )
+                )
             return findings
 
         findings.append(self.ok("fail2ban is running"))
@@ -48,10 +55,12 @@ class Fail2banCheck(BaseCheck):
                     if total:
                         findings.append(self.info(f"fail2ban: {total} total bans (sshd)"))
         else:
-            findings.append(self.warning(
-                "fail2ban sshd jail is not active",
-                fix_command="fail2ban-client start sshd",
-            ))
+            findings.append(
+                self.warning(
+                    "fail2ban sshd jail is not active",
+                    fix_command="fail2ban-client start sshd",
+                )
+            )
 
         return findings
 

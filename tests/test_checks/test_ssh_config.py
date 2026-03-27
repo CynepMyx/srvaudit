@@ -1,8 +1,6 @@
 from srvaudit.checks.ssh_config import SSHConfigCheck
 from srvaudit.models import DistroInfo, Severity
-
 from tests.conftest import MockTransport
-
 
 SECURE_CONFIG = """
 Port 22
@@ -58,7 +56,7 @@ def test_insecure_config():
     criticals = [f for f in findings if f.severity == Severity.CRITICAL]
     warnings = [f for f in findings if f.severity == Severity.WARNING]
     assert len(criticals) >= 2  # root login + empty passwords
-    assert len(warnings) >= 2   # password auth + x11
+    assert len(warnings) >= 2  # password auth + x11
 
 
 def test_prohibit_password_is_ok():
@@ -71,16 +69,14 @@ def test_prohibit_password_is_ok():
 
 
 def test_include_support():
-    check = _make_check({
-        "cat /etc/ssh/sshd_config 2>/dev/null": CONFIG_WITH_INCLUDE,
-        "cat '/etc/ssh/sshd_config.d/*.conf' 2>/dev/null": INCLUDE_OVERRIDE,
-    })
-    findings = check.run()
-    # Include file has PermitRootLogin no, but main file has yes
-    # First occurrence wins in sshd_config, so main file's "yes" takes precedence
-    # But Include is processed BEFORE other directives by sshd
-    # Our parser uses setdefault, so first seen wins (main file parsed first)
-    # This is a known limitation - document it
+    check = _make_check(
+        {
+            "cat /etc/ssh/sshd_config 2>/dev/null": CONFIG_WITH_INCLUDE,
+            "cat '/etc/ssh/sshd_config.d/*.conf' 2>/dev/null": INCLUDE_OVERRIDE,
+        }
+    )
+    # Verify it runs without error with Include directives
+    check.run()
 
 
 def test_unreadable_config():

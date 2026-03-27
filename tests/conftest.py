@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict
 
 import pytest
@@ -23,7 +22,13 @@ class MockTransport:
 
 @pytest.fixture
 def ubuntu_distro():
-    return DistroInfo(id="ubuntu", version="22.04", family="debian", has_bash=True, has_systemd=True)
+    return DistroInfo(
+        id="ubuntu",
+        version="22.04",
+        family="debian",
+        has_bash=True,
+        has_systemd=True,
+    )
 
 
 @pytest.fixture
@@ -33,4 +38,10 @@ def centos_distro():
 
 @pytest.fixture
 def alpine_distro():
-    return DistroInfo(id="alpine", version="3.19", family="alpine", has_bash=False, has_systemd=False)
+    return DistroInfo(
+        id="alpine",
+        version="3.19",
+        family="alpine",
+        has_bash=False,
+        has_systemd=False,
+    )

@@ -57,14 +57,16 @@ class SSHConfigCheck(BaseCheck):
     def _check_root_login(self, config: dict, findings: list):
         value = config.get("PermitRootLogin", "prohibit-password")
         if value == "yes":
-            findings.append(self.critical(
-                "Root login with password is enabled",
-                details=f"PermitRootLogin = {value}",
-                fix_command=(
-                    "sed -i 's/^PermitRootLogin yes/PermitRootLogin prohibit-password/' "
-                    "/etc/ssh/sshd_config && systemctl reload sshd"
-                ),
-            ))
+            findings.append(
+                self.critical(
+                    "Root login with password is enabled",
+                    details=f"PermitRootLogin = {value}",
+                    fix_command=(
+                        "sed -i 's/^PermitRootLogin yes/PermitRootLogin prohibit-password/' "
+                        "/etc/ssh/sshd_config && systemctl reload sshd"
+                    ),
+                )
+            )
         elif value in ("prohibit-password", "forced-commands-only", "without-password"):
             findings.append(self.ok("Root login restricted to key-based only"))
         elif value == "no":
@@ -73,48 +75,58 @@ class SSHConfigCheck(BaseCheck):
     def _check_password_auth(self, config: dict, findings: list):
         value = config.get("PasswordAuthentication", "yes")
         if value == "yes":
-            findings.append(self.warning(
-                "Password authentication is enabled",
-                details="Key-based auth is more secure",
-                fix_command=(
-                    "sed -i 's/^#\\?PasswordAuthentication yes/PasswordAuthentication no/' "
-                    "/etc/ssh/sshd_config && systemctl reload sshd"
-                ),
-            ))
+            findings.append(
+                self.warning(
+                    "Password authentication is enabled",
+                    details="Key-based auth is more secure",
+                    fix_command=(
+                        "sed -i 's/^#\\?PasswordAuthentication yes/PasswordAuthentication no/' "
+                        "/etc/ssh/sshd_config && systemctl reload sshd"
+                    ),
+                )
+            )
         else:
             findings.append(self.ok("Password authentication disabled"))
 
     def _check_empty_passwords(self, config: dict, findings: list):
         value = config.get("PermitEmptyPasswords", "no")
         if value == "yes":
-            findings.append(self.critical(
-                "Empty passwords are permitted",
-                fix_command=(
-                    "sed -i 's/^PermitEmptyPasswords yes/PermitEmptyPasswords no/' "
-                    "/etc/ssh/sshd_config && systemctl reload sshd"
-                ),
-            ))
+            findings.append(
+                self.critical(
+                    "Empty passwords are permitted",
+                    fix_command=(
+                        "sed -i 's/^PermitEmptyPasswords yes/PermitEmptyPasswords no/' "
+                        "/etc/ssh/sshd_config && systemctl reload sshd"
+                    ),
+                )
+            )
 
     def _check_max_auth_tries(self, config: dict, findings: list):
         value = config.get("MaxAuthTries", "6")
         try:
             tries = int(value)
             if tries > 6:
-                findings.append(self.warning(
-                    f"MaxAuthTries is high ({tries})",
-                    fix_command=f"echo 'MaxAuthTries 3' >> /etc/ssh/sshd_config && systemctl reload sshd",
-                ))
+                findings.append(
+                    self.warning(
+                        f"MaxAuthTries is high ({tries})",
+                        fix_command=(
+                            "echo 'MaxAuthTries 3' >> /etc/ssh/sshd_config && systemctl reload sshd"
+                        ),
+                    )
+                )
         except ValueError:
             pass
 
     def _check_x11_forwarding(self, config: dict, findings: list):
         value = config.get("X11Forwarding", "no")
         if value == "yes":
-            findings.append(self.warning(
-                "X11 forwarding is enabled",
-                details="Not needed on servers",
-                fix_command=(
-                    "sed -i 's/^X11Forwarding yes/X11Forwarding no/' "
-                    "/etc/ssh/sshd_config && systemctl reload sshd"
-                ),
-            ))
+            findings.append(
+                self.warning(
+                    "X11 forwarding is enabled",
+                    details="Not needed on servers",
+                    fix_command=(
+                        "sed -i 's/^X11Forwarding yes/X11Forwarding no/' "
+                        "/etc/ssh/sshd_config && systemctl reload sshd"
+                    ),
+                )
+            )

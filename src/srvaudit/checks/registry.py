@@ -19,6 +19,7 @@ def check(
         cls._check_meta = CheckMeta(name, category, quick, requires_sudo)
         _REGISTRY[name] = cls
         return cls
+
     return decorator
 
 
@@ -38,8 +39,7 @@ class BaseCheck(ABC):
         self.distro = distro
 
     @abstractmethod
-    def run(self) -> List[Finding]:
-        ...
+    def run(self) -> List[Finding]: ...
 
     def execute(self, cmd: str, timeout: Optional[int] = None) -> CommandResult:
         return self.transport.execute(cmd, timeout=timeout)

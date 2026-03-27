@@ -79,19 +79,25 @@ class OpenPortsCheck(BaseCheck):
         for host, port in public_ports:
             if port in KNOWN_DANGEROUS_PORTS:
                 svc = KNOWN_DANGEROUS_PORTS[port]
-                findings.append(self.critical(
-                    f"{svc} (port {port}) exposed on {host}",
-                    details=f"Database/service port {port} is accessible from any IP",
-                    fix_command=f"ufw deny {port} || iptables -A INPUT -p tcp --dport {port} -j DROP",
-                ))
+                findings.append(
+                    self.critical(
+                        f"{svc} (port {port}) exposed on {host}",
+                        details=f"Database/service port {port} is accessible from any IP",
+                        fix_command=(
+                            f"ufw deny {port} || iptables -A INPUT -p tcp --dport {port} -j DROP"
+                        ),
+                    )
+                )
             elif port == 22:
                 findings.append(self.ok(f"SSH (port {port}) open — expected"))
             elif port in (80, 443):
                 findings.append(self.ok(f"HTTP/HTTPS (port {port}) open — expected"))
             else:
-                findings.append(self.info(
-                    f"Port {port} open on {host}",
-                ))
+                findings.append(
+                    self.info(
+                        f"Port {port} open on {host}",
+                    )
+                )
 
         if not public_ports:
             findings.append(self.ok("No unexpected public ports"))

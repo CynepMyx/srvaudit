@@ -28,11 +28,13 @@ class UpdatesCheck(BaseCheck):
                 total = int(parts[0]) if parts[0].isdigit() else 0
                 security = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
                 if security > 0:
-                    findings.append(self.warning(
-                        f"{security} security updates pending",
-                        details=f"{total} total updates available",
-                        fix_command="apt update && apt upgrade -y",
-                    ))
+                    findings.append(
+                        self.warning(
+                            f"{security} security updates pending",
+                            details=f"{total} total updates available",
+                            fix_command="apt update && apt upgrade -y",
+                        )
+                    )
                 elif total > 0:
                     findings.append(self.info(f"{total} updates available (no security updates)"))
                 else:
@@ -48,10 +50,12 @@ class UpdatesCheck(BaseCheck):
             pass
 
         if count > 10:
-            findings.append(self.warning(
-                f"{count} packages can be upgraded",
-                fix_command="apt update && apt upgrade -y",
-            ))
+            findings.append(
+                self.warning(
+                    f"{count} packages can be upgraded",
+                    fix_command="apt update && apt upgrade -y",
+                )
+            )
         elif count > 0:
             findings.append(self.info(f"{count} packages can be upgraded"))
         else:
@@ -63,10 +67,12 @@ class UpdatesCheck(BaseCheck):
             try:
                 sec_count = int(sec.stdout.strip())
                 if sec_count > 0:
-                    findings.append(self.warning(
-                        f"{sec_count} security updates pending",
-                        fix_command="apt update && apt upgrade -y",
-                    ))
+                    findings.append(
+                        self.warning(
+                            f"{sec_count} security updates pending",
+                            fix_command="apt update && apt upgrade -y",
+                        )
+                    )
             except ValueError:
                 pass
 
@@ -84,10 +90,12 @@ class UpdatesCheck(BaseCheck):
         try:
             count = int(result.stdout.strip())
             if count > 10:
-                findings.append(self.warning(
-                    f"{count} packages can be upgraded",
-                    fix_command="yum update -y || dnf update -y",
-                ))
+                findings.append(
+                    self.warning(
+                        f"{count} packages can be upgraded",
+                        fix_command="yum update -y || dnf update -y",
+                    )
+                )
             elif count > 0:
                 findings.append(self.info(f"{count} packages can be upgraded"))
             else:

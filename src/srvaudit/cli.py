@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
-import sys
 import time
 from pathlib import Path
 from typing import Optional
@@ -56,7 +54,9 @@ def scan(
     key: Optional[str] = typer.Option(None, "-i", "--key", help="SSH private key path"),
     password: bool = typer.Option(False, "--password", help="Prompt for password"),
     accept_host_key: bool = typer.Option(False, "--accept-host-key", help="Trust unknown host key"),
-    known_hosts: Optional[str] = typer.Option(None, "--known-hosts", help="Custom known_hosts file"),
+    known_hosts: Optional[str] = typer.Option(
+        None, "--known-hosts", help="Custom known_hosts file"
+    ),
     sudo: bool = typer.Option(False, "--sudo", help="Run privileged checks via sudo"),
     quick: bool = typer.Option(False, "-q", "--quick", help="Quick mode: critical checks only"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
@@ -125,11 +125,14 @@ def scan(
             except Exception as e:
                 logging.getLogger("srvaudit").warning(f"Check {meta.name} failed: {e}")
                 from srvaudit.models import Finding, Severity
-                all_findings.append(Finding(
-                    check=meta.name,
-                    severity=Severity.SKIP,
-                    title=f"Check failed: {e}",
-                ))
+
+                all_findings.append(
+                    Finding(
+                        check=meta.name,
+                        severity=Severity.SKIP,
+                        title=f"Check failed: {e}",
+                    )
+                )
 
     duration = time.monotonic() - start
     score = calculate_score(all_findings)
@@ -147,6 +150,7 @@ def scan(
 
     if json_output or (output and output.endswith(".json")):
         from srvaudit.output.json_report import render_json
+
         json_str = render_json(report)
         if output:
             Path(output).write_text(json_str, encoding="utf-8")
@@ -155,9 +159,11 @@ def scan(
             print(json_str)
     else:
         from srvaudit.output.terminal import render_terminal
+
         render_terminal(report, verbose=verbose)
         if output:
             from srvaudit.output.json_report import render_json
+
             Path(output).write_text(render_json(report), encoding="utf-8")
             console.print(f"[green]Report saved to {output}[/green]")
 
@@ -187,17 +193,30 @@ def diff(
 
     console.print()
     console.print("[bold]srvaudit diff[/bold]")
-    console.print(f"Before: {before_data.get('timestamp', '?')} | Score: {b_score}/100 ({before_data.get('grade', '?')})")
+    b_ts = before_data.get("timestamp", "?")
+    b_grade = before_data.get("grade", "?")
+    console.print(f"Before: {b_ts} | Score: {b_score}/100 ({b_grade})")
 
     diff_color = "green" if diff_score > 0 else "red" if diff_score < 0 else "white"
     sign = "+" if diff_score > 0 else ""
+    a_ts = after_data.get("timestamp", "?")
+    a_grade = after_data.get("grade", "?")
     console.print(
-        f"After:  {after_data.get('timestamp', '?')} | Score: {a_score}/100 ({after_data.get('grade', '?')})  "
+        f"After:  {a_ts} | Score: {a_score}/100 ({a_grade})  "
         f"[{diff_color}][{sign}{diff_score}][/{diff_color}]"
     )
 
-    b_issues = {(f["check"], f["title"]): f for f in before_data.get("findings", []) if f["severity"] in ("critical", "warning")}
-    a_issues = {(f["check"], f["title"]): f for f in after_data.get("findings", []) if f["severity"] in ("critical", "warning")}
+    severities = ("critical", "warning")
+    b_issues = {
+        (f["check"], f["title"]): f
+        for f in before_data.get("findings", [])
+        if f["severity"] in severities
+    }
+    a_issues = {
+        (f["check"], f["title"]): f
+        for f in after_data.get("findings", [])
+        if f["severity"] in severities
+    }
 
     fixed = [b_issues[k] for k in b_issues if k not in a_issues]
     new = [a_issues[k] for k in a_issues if k not in b_issues]
