@@ -22,6 +22,5 @@ def test_detects_exposed_ssh_on_nonstandard_port(ubuntu_distro):
     findings = Fail2banCheck(transport, ubuntu_distro).run()
 
     assert any(
-        f.severity == Severity.WARNING and "fail2ban is not installed" in f.title
-        for f in findings
+        f.severity == Severity.WARNING and "fail2ban is not installed" in f.title for f in findings
     )

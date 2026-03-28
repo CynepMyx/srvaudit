@@ -22,8 +22,7 @@ def test_yum_fallback_to_dnf_counts_lines(centos_distro):
     findings = UpdatesCheck(transport, centos_distro).run()
 
     assert any(
-        f.severity == Severity.INFO and "2 packages can be upgraded" in f.title
-        for f in findings
+        f.severity == Severity.INFO and "2 packages can be upgraded" in f.title for f in findings
     )
 
 

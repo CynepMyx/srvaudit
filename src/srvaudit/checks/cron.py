@@ -63,9 +63,7 @@ class CronCheck(BaseCheck):
             if files:
                 details = ", ".join(files[:DETAIL_LIMIT])
                 if len(files) == SYSTEM_CRON_LIMIT:
-                    note = (
-                        f"(showing first {SYSTEM_CRON_LIMIT} results, may be incomplete)"
-                    )
+                    note = f"(showing first {SYSTEM_CRON_LIMIT} results, may be incomplete)"
                     details = f"{details}\n{note}" if details else note
                 findings.append(
                     self.info(

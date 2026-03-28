@@ -216,9 +216,7 @@ def scan(
 
     if not sudo and skipped_without_sudo:
         skipped_names = ", ".join(check._check_meta.name for check in skipped_without_sudo)
-        console.print(
-            f"{len(skipped_without_sudo)} checks skipped (need --sudo): {skipped_names}"
-        )
+        console.print(f"{len(skipped_without_sudo)} checks skipped (need --sudo): {skipped_names}")
 
     has_critical = any(f.severity.value == "critical" for f in all_findings)
     has_warning = any(f.severity.value == "warning" for f in all_findings)

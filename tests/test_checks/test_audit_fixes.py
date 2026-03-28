@@ -71,13 +71,8 @@ def test_cron_truncation_note_added(ubuntu_distro):
 
     findings = CronCheck(transport, ubuntu_distro).run()
 
-    assert any(
-        f.title.startswith("user1:") and TRUNCATED_20_NOTE in f.details for f in findings
-    )
-    assert any(
-        "system cron files" in f.title and TRUNCATED_20_NOTE in f.details
-        for f in findings
-    )
+    assert any(f.title.startswith("user1:") and TRUNCATED_20_NOTE in f.details for f in findings)
+    assert any("system cron files" in f.title and TRUNCATED_20_NOTE in f.details for f in findings)
 
 
 def test_dotenv_truncation_note_added(ubuntu_distro):
