@@ -10,7 +10,7 @@ from rich.console import Console
 
 from srvaudit import __version__
 from srvaudit.distro import detect_distro, detect_environment
-from srvaudit.models import AuditReport
+from srvaudit.models import AuditReport, Finding, Severity
 from srvaudit.scoring import calculate_score, score_to_grade
 from srvaudit.transport import HostKeyError, ShellTransport, SSHConnectionError
 
@@ -23,8 +23,8 @@ app = typer.Typer(
 console = Console()
 
 
-def _parse_target(target: str) -> tuple:
-    target = target.strip().replace("ssh://", "")
+def _parse_target(target: str) -> tuple[str, str, int]:
+    target = target.strip().replace("ssh://", "", 1)
     if not target:
         raise typer.BadParameter("Target cannot be empty. Use: user@host")
 
@@ -34,7 +34,25 @@ def _parse_target(target: str) -> tuple:
 
     if "@" in host:
         user, host = host.rsplit("@", 1)
-    if ":" in host:
+    if host.startswith("["):
+        end = host.find("]")
+        if end == -1:
+            raise typer.BadParameter("Invalid IPv6 target. Use: user@[host][:port]")
+
+        remainder = host[end + 1 :]
+        host = host[1:end]
+        if remainder.startswith(":"):
+            port_str = remainder[1:]
+            try:
+                port = int(port_str)
+            except ValueError:
+                pass
+        elif remainder:
+            raise typer.BadParameter("Invalid IPv6 target. Use: user@[host][:port]")
+    elif host.count(":") > 1:
+        # Unbracketed IPv6 literal without an explicit port.
+        pass
+    elif ":" in host:
         host, port_str = host.rsplit(":", 1)
         try:
             port = int(port_str)
@@ -45,6 +63,17 @@ def _parse_target(target: str) -> tuple:
         raise typer.BadParameter("Hostname cannot be empty. Use: user@host")
 
     return user, host, port
+
+
+def _make_skip_findings(check_classes: list, reason: str) -> list[Finding]:
+    return [
+        Finding(
+            check=check_cls._check_meta.name,
+            severity=Severity.SKIP,
+            title=f"Skipped: {reason}",
+        )
+        for check_cls in check_classes
+    ]
 
 
 def version_callback(value: bool):
@@ -105,6 +134,7 @@ def scan(
         raise typer.Exit(2)
 
     start = time.monotonic()
+    skipped_without_sudo = []
 
     with transport:
         console.print("[blue]Detecting OS...[/blue]")
@@ -116,10 +146,23 @@ def scan(
 
         check_classes = get_quick_checks() if quick else get_all_checks()
 
-        if not sudo:
-            check_classes = [c for c in check_classes if not c._check_meta.requires_sudo]
+        privileged_checks = [c for c in check_classes if c._check_meta.requires_sudo]
 
         all_findings = []
+        if sudo:
+            if privileged_checks and not transport.check_passwordless_sudo():
+                transport.sudo = False
+                all_findings.extend(
+                    _make_skip_findings(
+                        privileged_checks,
+                        "passwordless sudo not available",
+                    )
+                )
+                check_classes = [c for c in check_classes if not c._check_meta.requires_sudo]
+        else:
+            skipped_without_sudo = privileged_checks
+            check_classes = [c for c in check_classes if not c._check_meta.requires_sudo]
+
         for check_cls in check_classes:
             meta = check_cls._check_meta
             if verbose:
@@ -130,8 +173,6 @@ def scan(
                 all_findings.extend(findings)
             except Exception as e:
                 logging.getLogger("srvaudit").warning(f"Check {meta.name} failed: {e}")
-                from srvaudit.models import Finding, Severity
-
                 all_findings.append(
                     Finding(
                         check=meta.name,
@@ -172,6 +213,12 @@ def scan(
 
             Path(output).write_text(render_json(report), encoding="utf-8")
             console.print(f"[green]Report saved to {output}[/green]")
+
+    if not sudo and skipped_without_sudo:
+        skipped_names = ", ".join(check._check_meta.name for check in skipped_without_sudo)
+        console.print(
+            f"{len(skipped_without_sudo)} checks skipped (need --sudo): {skipped_names}"
+        )
 
     has_critical = any(f.severity.value == "critical" for f in all_findings)
     has_warning = any(f.severity.value == "warning" for f in all_findings)

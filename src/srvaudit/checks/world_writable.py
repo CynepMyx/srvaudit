@@ -5,6 +5,9 @@ from typing import List
 from srvaudit.checks.registry import BaseCheck, check
 from srvaudit.models import Finding
 
+RESULT_LIMIT = 20
+DETAIL_LIMIT = 10
+
 
 @check(name="world_writable", category="persistence")
 class WorldWritableCheck(BaseCheck):
@@ -18,19 +21,26 @@ class WorldWritableCheck(BaseCheck):
             " -not -path '/dev/*'"
             " -not -path '/run/*'"
             " -not -path '/tmp/*'"
-            " 2>/dev/null | head -20"
+            f" 2>/dev/null | head -{RESULT_LIMIT}"
         )
-        if not result.success or not result.stdout.strip():
-            findings.append(self.ok("No world-writable files found"))
+        if not result.stdout.strip():
+            if result.return_code != 0:
+                findings.append(self.skip("find command failed"))
+            else:
+                findings.append(self.ok("No world-writable files found"))
             return findings
 
         files = [f.strip() for f in result.stdout.splitlines() if f.strip()]
 
         if files:
+            details = "\n".join(files[:DETAIL_LIMIT])
+            if len(files) == RESULT_LIMIT:
+                note = f"(showing first {RESULT_LIMIT} results, may be incomplete)"
+                details = f"{details}\n{note}" if details else note
             findings.append(
                 self.warning(
                     f"{len(files)} world-writable file(s) found",
-                    details="\n".join(files[:10]),
+                    details=details,
                     fix_command=f"chmod o-w {files[0]}",
                 )
             )

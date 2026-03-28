@@ -11,11 +11,26 @@ class UpdatesCheck(BaseCheck):
     def run(self) -> List[Finding]:
         if self.distro.is_debian_family:
             return self._check_apt()
-        elif self.distro.is_rhel_family:
+        if self.distro.is_rhel_family:
             return self._check_yum()
-        elif self.distro.is_alpine:
+        if self.distro.is_alpine:
             return self._check_apk()
         return [self.skip(f"Updates check not supported for {self.distro.id}")]
+
+    def _count_update_lines(self, output: str) -> int:
+        return len([line for line in output.splitlines() if line.strip()])
+
+    def _findings_from_count(self, count: int, fix_command: str) -> List[Finding]:
+        if count > 10:
+            return [
+                self.warning(
+                    f"{count} packages can be upgraded",
+                    fix_command=fix_command,
+                )
+            ]
+        if count > 0:
+            return [self.info(f"{count} packages can be upgraded")]
+        return [self.ok("System is up to date")]
 
     def _check_apt(self) -> List[Finding]:
         findings = []
@@ -79,46 +94,24 @@ class UpdatesCheck(BaseCheck):
         return findings
 
     def _check_yum(self) -> List[Finding]:
-        findings = []
-        result = self.execute("yum check-update --quiet 2>/dev/null | wc -l", timeout=30)
-        if not result.success:
-            result = self.execute("dnf check-update --quiet 2>/dev/null | wc -l", timeout=30)
-        if not result.success:
-            findings.append(self.skip("Cannot check for updates (yum/dnf)"))
-            return findings
+        commands = (
+            "yum check-update --quiet 2>/dev/null",
+            "dnf check-update --quiet 2>/dev/null",
+        )
+        for command in commands:
+            result = self.execute(command, timeout=30)
+            if result.not_found:
+                continue
+            if result.return_code in (0, 100):
+                count = self._count_update_lines(result.stdout)
+                return self._findings_from_count(count, "yum update -y || dnf update -y")
 
-        try:
-            count = int(result.stdout.strip())
-            if count > 10:
-                findings.append(
-                    self.warning(
-                        f"{count} packages can be upgraded",
-                        fix_command="yum update -y || dnf update -y",
-                    )
-                )
-            elif count > 0:
-                findings.append(self.info(f"{count} packages can be upgraded"))
-            else:
-                findings.append(self.ok("System is up to date"))
-        except ValueError:
-            findings.append(self.skip("Cannot parse update count"))
-
-        return findings
+        return [self.skip("Cannot check for updates (yum/dnf)")]
 
     def _check_apk(self) -> List[Finding]:
-        findings = []
-        result = self.execute("apk version -l '<' 2>/dev/null | wc -l", timeout=30)
+        result = self.execute("apk version -l '<' 2>/dev/null", timeout=30)
         if not result.success:
-            findings.append(self.skip("Cannot check for updates (apk)"))
-            return findings
+            return [self.skip("Cannot check for updates (apk)")]
 
-        try:
-            count = int(result.stdout.strip())
-            if count > 0:
-                findings.append(self.info(f"{count} packages can be upgraded"))
-            else:
-                findings.append(self.ok("System is up to date"))
-        except ValueError:
-            pass
-
-        return findings
+        count = self._count_update_lines(result.stdout)
+        return self._findings_from_count(count, "apk upgrade")

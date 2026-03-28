@@ -4,6 +4,7 @@ import logging
 import re
 import select
 import time
+from typing import Optional
 from uuid import uuid4
 
 import paramiko
@@ -118,12 +119,19 @@ class ShellTransport:
             self.channel.recv(READ_CHUNK)
             time.sleep(0.1)
 
-    def execute(self, command: str, timeout: int = None) -> CommandResult:
+    def execute(
+        self,
+        command: str,
+        timeout: int = None,
+        use_sudo: Optional[bool] = None,
+    ) -> CommandResult:
         t = timeout or self.command_timeout
         marker = f"{MARKER_PREFIX}_{uuid4().hex[:8]}"
 
         cmd = command
-        if self.sudo:
+        if use_sudo is None:
+            use_sudo = self.sudo
+        if use_sudo:
             cmd = f"sudo {cmd}"
 
         wrapped = f"{cmd}; echo {marker}$?{marker}\n"
@@ -147,6 +155,10 @@ class ShellTransport:
             stdout=stdout,
             return_code=return_code,
         )
+
+    def check_passwordless_sudo(self, timeout: int = 5) -> bool:
+        result = self.execute("sudo -n true", timeout=timeout, use_sudo=False)
+        return result.success
 
     def _read_until_marker(self, marker: str, timeout: int) -> str:
         buf = ""
