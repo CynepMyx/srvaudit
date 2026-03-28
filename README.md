@@ -1,13 +1,14 @@
 # srvaudit
 
 [![CI](https://github.com/CynepMyx/srvaudit/actions/workflows/ci.yml/badge.svg)](https://github.com/CynepMyx/srvaudit/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://pypi.org/project/srvaudit/)
+[![PyPI](https://img.shields.io/pypi/v/srvaudit)](https://pypi.org/project/srvaudit/)
+[![Python](https://img.shields.io/pypi/pyversions/srvaudit)](https://pypi.org/project/srvaudit/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 Remote Linux server security audit via SSH. No agents. No installation on the server.
 
 ```bash
-pip install git+https://github.com/CynepMyx/srvaudit.git
+pip install srvaudit
 srvaudit scan root@your-server.com
 ```
 
@@ -101,17 +102,17 @@ srvaudit does fast practical checks for DevOps engineers and freelancers who man
 
 ```bash
 # Recommended (isolated install)
-pipx install git+https://github.com/CynepMyx/srvaudit.git
+pipx install srvaudit
 
 # Or with pip
-pip install git+https://github.com/CynepMyx/srvaudit.git
+pip install srvaudit
 
 # From source
 git clone https://github.com/CynepMyx/srvaudit.git
 cd srvaudit && pip install -e .
 ```
 
-Requires Python 3.9+. PyPI package coming soon.
+Requires Python 3.9+.
 
 ## Scoring
 
