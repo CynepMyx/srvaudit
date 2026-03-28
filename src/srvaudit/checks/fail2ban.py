@@ -65,7 +65,10 @@ class Fail2banCheck(BaseCheck):
         return findings
 
     def _is_ssh_exposed(self) -> bool:
-        result = self.execute("ss -tlnp 2>/dev/null | grep ':22 '")
+        result = self.execute("ss -tlnp 2>/dev/null | grep sshd")
         if result.success and result.stdout.strip():
-            return "0.0.0.0" in result.stdout or "*:" in result.stdout or ":::" in result.stdout
+            return any(
+                "0.0.0.0:" in line or "*:" in line or ":::" in line
+                for line in result.stdout.splitlines()
+            )
         return False

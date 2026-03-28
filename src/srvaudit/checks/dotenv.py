@@ -5,6 +5,9 @@ from typing import List
 from srvaudit.checks.registry import BaseCheck, check
 from srvaudit.models import Finding
 
+RESULT_LIMIT = 10
+DETAIL_LIMIT = 5
+
 
 @check(name="dotenv", category="web")
 class DotenvCheck(BaseCheck):
@@ -17,17 +20,21 @@ class DotenvCheck(BaseCheck):
             return findings
 
         result = self.execute(
-            "find /var/www -maxdepth 3 -name '.env' -type f 2>/dev/null | head -10"
+            f"find /var/www -maxdepth 3 -name '.env' -type f 2>/dev/null | head -{RESULT_LIMIT}"
         )
         if not result.success or not result.stdout.strip():
             return findings
 
         files = [f.strip() for f in result.stdout.splitlines() if f.strip()]
         if files:
+            details = "\n".join(files[:DETAIL_LIMIT])
+            if len(files) == RESULT_LIMIT:
+                note = f"(showing first {RESULT_LIMIT} results, may be incomplete)"
+                details = f"{details}\n{note}" if details else note
             findings.append(
                 self.warning(
                     f"{len(files)} .env file(s) found in web directories",
-                    details="\n".join(files[:5]),
+                    details=details,
                     fix_command=("# Add to nginx config:\n# location ~ /\\.env { deny all; }"),
                 )
             )

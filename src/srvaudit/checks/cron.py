@@ -5,6 +5,11 @@ from typing import List
 from srvaudit.checks.registry import BaseCheck, check
 from srvaudit.models import Finding
 
+USER_LIMIT = 20
+SYSTEM_CRON_LIMIT = 20
+DETAIL_LIMIT = 10
+JOB_DETAIL_LIMIT = 5
+
 
 @check(name="cron", category="persistence", requires_sudo=True)
 class CronCheck(BaseCheck):
@@ -17,13 +22,15 @@ class CronCheck(BaseCheck):
     def _check_user_crontabs(self, findings: list):
         # Get users with login shells
         users_result = self.execute(
-            "getent passwd | awk -F: '$7 !~ /(nologin|false)/ {print $1}' | head -20"
+            f"getent passwd | awk -F: '$7 !~ /(nologin|false)/ {{print $1}}' | head -{USER_LIMIT}"
         )
         if not users_result.success:
             return
 
-        for user in users_result.stdout.splitlines():
-            user = user.strip()
+        users = [user.strip() for user in users_result.stdout.splitlines() if user.strip()]
+        users_truncated = len(users) == USER_LIMIT
+
+        for user in users:
             if not user or user in ("$", "#") or not all(c.isalnum() or c in "-_." for c in user):
                 continue
             result = self.execute(f"crontab -l -u {user} 2>/dev/null")
@@ -34,15 +41,19 @@ class CronCheck(BaseCheck):
                     if line.strip() and not line.strip().startswith("#")
                 ]
                 if jobs:
+                    details = "\n".join(jobs[:JOB_DETAIL_LIMIT])
+                    if users_truncated:
+                        note = f"(showing first {USER_LIMIT} results, may be incomplete)"
+                        details = f"{details}\n{note}" if details else note
                     findings.append(
                         self.info(
                             f"{user}: {len(jobs)} cron job(s)",
-                            details="\n".join(jobs[:5]),
+                            details=details,
                         )
                     )
 
     def _check_system_cron(self, findings: list):
-        result = self.execute("ls /etc/cron.d/ 2>/dev/null | head -20")
+        result = self.execute(f"ls /etc/cron.d/ 2>/dev/null | head -{SYSTEM_CRON_LIMIT}")
         if result.success and result.stdout.strip():
             files = [
                 f.strip()
@@ -50,9 +61,13 @@ class CronCheck(BaseCheck):
                 if f.strip() and f.strip() not in (".placeholder", "e2scrub_all")
             ]
             if files:
+                details = ", ".join(files[:DETAIL_LIMIT])
+                if len(files) == SYSTEM_CRON_LIMIT:
+                    note = f"(showing first {SYSTEM_CRON_LIMIT} results, may be incomplete)"
+                    details = f"{details}\n{note}" if details else note
                 findings.append(
                     self.info(
                         f"{len(files)} system cron files in /etc/cron.d/",
-                        details=", ".join(files[:10]),
+                        details=details,
                     )
                 )

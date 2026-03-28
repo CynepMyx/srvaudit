@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List
 
 from srvaudit.checks.registry import BaseCheck, check
-from srvaudit.models import Finding
+from srvaudit.models import Finding, Severity
 
 DANGEROUS_CAPS = {
     "cap_setuid",
@@ -25,12 +25,15 @@ KNOWN_SAFE = {
     "/usr/sbin/arping",
 }
 
+RESULT_LIMIT = 50
+DETAIL_LIMIT = 10
+
 
 @check(name="capabilities", category="system", requires_sudo=True)
 class CapabilitiesCheck(BaseCheck):
     def run(self) -> List[Finding]:
         findings = []
-        result = self.execute("getcap -r / 2>/dev/null | head -50")
+        result = self.execute(f"getcap -r / 2>/dev/null | head -{RESULT_LIMIT}")
         if result.not_found:
             findings.append(self.skip("getcap not available"))
             return findings
@@ -39,9 +42,12 @@ class CapabilitiesCheck(BaseCheck):
             return findings
 
         suspicious = []
-        for line in result.stdout.splitlines():
+        raw_lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        truncated = len(raw_lines) == RESULT_LIMIT
+
+        for line in raw_lines:
             line = line.strip()
-            if not line or "=" not in line:
+            if "=" not in line:
                 continue
             parts = line.split("=", 1)
             filepath = parts[0].strip()
@@ -55,10 +61,23 @@ class CapabilitiesCheck(BaseCheck):
                 suspicious.append(f"{filepath} = {caps}")
 
         if suspicious:
+            details = "\n".join(suspicious[:DETAIL_LIMIT])
+            if truncated:
+                note = f"(showing first {RESULT_LIMIT} results, may be incomplete)"
+                details = f"{details}\n{note}" if details else note
             findings.append(
                 self.warning(
                     f"{len(suspicious)} files with dangerous capabilities",
-                    details="\n".join(suspicious[:10]),
+                    details=details,
+                )
+            )
+        elif truncated:
+            findings.append(
+                Finding(
+                    check=self._check_meta.name,
+                    severity=Severity.OK,
+                    title="No suspicious file capabilities",
+                    details=f"(showing first {RESULT_LIMIT} results, may be incomplete)",
                 )
             )
         else:
